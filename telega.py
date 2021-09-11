@@ -142,7 +142,7 @@ def main():
                              'Пользователь не найден, проверьте id пользователя и повторите команду /add')
             return 1
 
-        data[user["id"]] = user['first_name'] + ' ' + user['last_name']
+        data[str(user["id"])] = user['first_name'] + ' ' + user['last_name']
 
         try:
             with open('users.pickle', 'wb') as f:
