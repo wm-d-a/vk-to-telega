@@ -17,8 +17,6 @@ def log(user, command, *args):  # Logging by template: <date and time> <chat id>
     print(log_message)
 
 
-init = False  # Проверка на первый запуск
-
 is_broadcast = False  # Включена ли трансляция
 
 
@@ -32,7 +30,6 @@ def main():
         log('before_the_start', 'CHECK ACCESS TOKEN')
 
     def is_empty():
-        global init
         if os.stat("users.pickle").st_size == 0:
             init = True
         else:
@@ -128,9 +125,8 @@ def main():
 
     def add(message):
         data = {}
-        # https://vk.com/delukaaa
         try:
-            if is_empty:
+            if not is_empty():
                 with open('users.pickle', 'rb') as f:
                     data = pickle.load(f)
         except Exception:
@@ -145,7 +141,9 @@ def main():
             bot.send_message(message.from_user.id,
                              'Пользователь не найден, проверьте id пользователя и повторите команду /add')
             return 1
+
         data[user["id"]] = user['first_name'] + ' ' + user['last_name']
+
         try:
             with open('users.pickle', 'wb') as f:
                 pickle.dump(data, f)
