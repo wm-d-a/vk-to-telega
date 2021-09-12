@@ -66,7 +66,7 @@ def main():
         if is_empty():
             log(message.from_user.id, '/vk', 'the list of users is empty')
             bot.send_message(message.from_user.id,
-                             'Ваш список отслеживаемых пользователей пуст.'
+                             'Ваш список отслеживаемых пользователей пуст. '
                              'Для добавления введите /add')
         else:
             bot.send_message(message.from_user.id, 'Вы запустили трансляцию сообщений, введите /exit для отключения')
@@ -88,6 +88,7 @@ def main():
         global is_broadcast
         log(message.from_user.id, '/vk', 'broadcast', 'starting longpoll')
         longpoll = VkLongPoll(session)
+
         try:
             with open('users.pickle', 'rb') as f:
                 data = pickle.load(f)
@@ -106,11 +107,11 @@ def main():
                             log(message.from_user.id, '/vk', 'broadcast', 'resend message')
                             bot.send_message(message.from_user.id, message_resend)
                 else:
-                    log(message.from_user.id, '/vk', 'translation', 'stop translation')
+                    log(message.from_user.id, '/vk', 'broadcast', 'stop broadcast')
                     return 0
         except Exception:
             log(message.from_user.id, '/vk', 'broadcast', 'ERROR', 'Error listening to messages')
-            bot.send_message(message.from_user.id, 'Ошибка при отслеживании сообщений, перезапуск трансляции...')
+            # bot.send_message(message.from_user.id, 'Ошибка при отслеживании сообщений, перезапуск трансляции...')
             broadcast(message)
 
     @bot.message_handler(commands=['add'])
@@ -124,6 +125,7 @@ def main():
         bot.register_next_step_handler(message, add)
 
     def add(message):
+        global is_broadcast
         data = {}
         try:
             if not is_empty():
@@ -154,6 +156,14 @@ def main():
         log(message.from_user.id, '/add', 'add new user', f"{user['first_name']} {user['last_name']}")
         bot.send_message(message.from_user.id,
                          f'Пользователь {user["first_name"]} {user["last_name"]} успешно добавлен')
+        if is_broadcast:
+            is_broadcast = False
+            bot.send_message(message.from_user.id, 'Перезапуск трансляции...')
+            log(message.from_user.id, '/add', 'Reboot broadcast. User add')
+            time.sleep(10)
+            is_broadcast = True
+            bot.send_message(message.from_user.id, 'Трансляция перезапущена')
+            broadcast(message)
 
     @bot.message_handler(commands=['delete'])
     def delete_main(message):  # модуль запуска трансляции
@@ -167,6 +177,7 @@ def main():
         bot.register_next_step_handler(message, delete)
 
     def delete(message):
+        global is_broadcast
         try:
             with open('users.pickle', 'rb') as f:
                 data = pickle.load(f)
@@ -177,6 +188,7 @@ def main():
             return 1
         try:
             user = data[message.text]
+
             del data[message.text]
         except Exception:
             log(message.from_user.id, '/delete', 'ERROR', 'The user is missing in the list')
@@ -191,6 +203,14 @@ def main():
             return 1
         log(message.from_user.id, '/delete', f'User {user}(id: {message.text}) removed')
         bot.send_message(message.from_user.id, f'Пользователь {user}(id: {message.text}) успешно удален')
+        if is_broadcast:
+            is_broadcast = False
+            bot.send_message(message.from_user.id, 'Перезапуск трансляции...')
+            log(message.from_user.id, '/delete', 'Reboot broadcast. User removed')
+            time.sleep(10)
+            is_broadcast = True
+            bot.send_message(message.from_user.id, 'Трансляция перезапущена')
+            broadcast(message)
 
     @bot.message_handler(commands=['check'])
     def check(message):
@@ -215,8 +235,9 @@ def main():
     bot.polling()
 
 
-try:
-    main()
-except Exception:
-    log(user='--------', command='\nREBOOT\n')
-    main()
+while True:
+    try:
+        main()
+    except Exception:
+        log(user='--------', command='\nREBOOT\n')
+        main()
