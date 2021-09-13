@@ -37,7 +37,7 @@ def main():
             init = False
         return init
 
-    def reboot(message, func_name, for_user):
+    def reboot(message, func_name, for_user=''):
         global is_broadcast
         if is_broadcast:
             is_broadcast = False
@@ -65,6 +65,7 @@ def main():
             '/vk': 'Старт трансляции',
             '/exit': 'Отключение трансляции',
             '/delete_all': 'Удаление всех пользователей',
+            '/add_all': 'Добавление всех друзей',
             '/lang': 'Настройки языка (Скоро будет!)',
         }
         buf = ''
@@ -83,7 +84,8 @@ def main():
                                  'Ваш список отслеживаемых пользователей пуст. '
                                  'Для добавления введите /add')
             else:
-                bot.send_message(message.from_user.id, 'Вы запустили трансляцию сообщений, введите /exit для отключения')
+                bot.send_message(message.from_user.id,
+                                 'Вы запустили трансляцию сообщений, введите /exit для отключения')
                 is_broadcast = True
                 log(message.from_user.id, '/vk', 'starting broadcast')
                 broadcast(message)
@@ -129,6 +131,36 @@ def main():
             log(message.from_user.id, '/vk', 'broadcast', 'ERROR', 'Error listening to messages')
             # bot.send_message(message.from_user.id, 'Ошибка при отслеживании сообщений, перезапуск трансляции...')
             broadcast(message)
+
+    @bot.message_handler(commands=['add_all'])
+    def add_all(message):
+        friends = vk.friends.get()['items']
+        users = vk.users.get(user_ids=friends)
+        data = {}
+        try:
+            if not is_empty():
+                with open('users.pickle', 'rb') as f:
+                    data = pickle.load(f)
+        except Exception:
+            log(message.from_user.id, '/add', 'ERROR', 'Error reading a file')
+            bot.send_message(message.from_user.id,
+                             'Ошибка при открытии списка юзеров, проверьте наличие файла и повторите команду')
+            return 1
+        for user in users:
+            data[str(user["id"])] = user['first_name'] + ' ' + user['last_name']
+        for key in data:
+            print(key, data[key])
+        try:
+            with open('users.pickle', 'wb') as f:
+                pickle.dump(data, f)
+        except Exception:
+            log(message.from_user.id, '/delete', 'ERROR', "Error while saving a new list")
+            bot.send_message(message.from_user.id, 'Ошибка при сохранении исправленного списка, перезапустите команду')
+            return 1
+        log(message.from_user.id, '/add_all', 'add all friends')
+        bot.send_message(message.from_user.id,
+                         f'Пользователи успешно добавлены')
+        reboot(message, '/add_all')
 
     @bot.message_handler(commands=['add'])
     def add_main(message):
@@ -193,7 +225,6 @@ def main():
             return 1
         log(message.from_user.id, '/delete', f'Users removed')
         bot.send_message(message.from_user.id, f'Все пользователи успешно удалены')
-        reboot(message, '/delete_all', f'Users removed')
 
     @bot.message_handler(commands=['delete'])
     def delete_main(message):  # модуль запуска трансляции
@@ -245,10 +276,13 @@ def main():
             try:
                 with open('users.pickle', 'rb') as f:
                     data = pickle.load(f)
-                    buf = ''
+                    buf = ['']
                     for item in data:
-                        buf += f'{data[item]} (id: {item})\n'
-                    bot.send_message(message.from_user.id, f'В вашем списке:\n' + buf)
+                        if len(buf[-1]) > 3000:
+                            buf.append('')
+                        buf[-1] += f'{data[item]} (id: {item})\n'
+                    for item in buf:
+                        bot.send_message(message.from_user.id, f'В вашем списке:\n' + item)
             except Exception:
                 log(message.from_user.id, '/check', 'Error reading a file')
                 bot.send_message(message.from_user.id,
