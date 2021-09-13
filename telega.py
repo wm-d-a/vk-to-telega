@@ -6,6 +6,7 @@ import pickle
 from vk_api.longpoll import VkLongPoll, VkEventType
 import os
 import datetime
+from lang import words
 
 
 def log(user, command, *args):  # Logging by template: <date and time> <chat id> <command> <other options>
@@ -36,8 +37,19 @@ def main():
             init = False
         return init
 
+    def reboot(message, func_name, for_user):
+        global is_broadcast
+        if is_broadcast:
+            is_broadcast = False
+            bot.send_message(message.from_user.id, 'Перезапуск трансляции')
+            log(message.from_user.id, func_name, f'Reboot broadcast. {for_user}')
+            time.sleep(10)
+            is_broadcast = True
+            bot.send_message(message.from_user.id, 'Трансляция перезапущена')
+            broadcast(message)
+
     @bot.message_handler(commands=['start'])
-    def send_welcome(message):
+    def start(message):
         log(message.from_user.id, '/start')
         bot.reply_to(message,
                      "Привет! Это бот для трансляции сообщений из ВКонтакте в Телеграм.\n"
@@ -52,6 +64,7 @@ def main():
             '/check': 'Показать список пользователей',
             '/vk': 'Старт трансляции',
             '/exit': 'Отключение трансляции',
+            '/delete_all': 'Удаление всех пользователей',
             '/lang': 'Настройки языка (Скоро будет!)',
         }
         buf = ''
@@ -62,17 +75,20 @@ def main():
     @bot.message_handler(commands=['vk'])
     def vk_t(message):  # модуль запуска трансляции
         global is_broadcast
-        log(message.from_user.id, '/vk')
-        if is_empty():
-            log(message.from_user.id, '/vk', 'the list of users is empty')
-            bot.send_message(message.from_user.id,
-                             'Ваш список отслеживаемых пользователей пуст. '
-                             'Для добавления введите /add')
+        if not is_broadcast:
+            log(message.from_user.id, '/vk')
+            if is_empty():
+                log(message.from_user.id, '/vk', 'the list of users is empty')
+                bot.send_message(message.from_user.id,
+                                 'Ваш список отслеживаемых пользователей пуст. '
+                                 'Для добавления введите /add')
+            else:
+                bot.send_message(message.from_user.id, 'Вы запустили трансляцию сообщений, введите /exit для отключения')
+                is_broadcast = True
+                log(message.from_user.id, '/vk', 'starting broadcast')
+                broadcast(message)
         else:
-            bot.send_message(message.from_user.id, 'Вы запустили трансляцию сообщений, введите /exit для отключения')
-            is_broadcast = True
-            log(message.from_user.id, '/vk', 'starting broadcast')
-            broadcast(message)
+            bot.send_message(message.from_user.id, 'Трансляция уже запущена!')
 
     @bot.message_handler(commands=['exit'])
     def exit(message):
@@ -132,7 +148,7 @@ def main():
                 with open('users.pickle', 'rb') as f:
                     data = pickle.load(f)
         except Exception:
-            log(message.from_user.id, '/add', 'Error reading a file')
+            log(message.from_user.id, '/add', 'ERROR', 'Error reading a file')
             bot.send_message(message.from_user.id,
                              'Ошибка при открытии списка юзеров, проверьте наличие файла и повторите команду')
             return 1
@@ -156,14 +172,28 @@ def main():
         log(message.from_user.id, '/add', 'add new user', f"{user['first_name']} {user['last_name']}")
         bot.send_message(message.from_user.id,
                          f'Пользователь {user["first_name"]} {user["last_name"]} успешно добавлен')
-        if is_broadcast:
-            is_broadcast = False
-            bot.send_message(message.from_user.id, 'Перезапуск трансляции...')
-            log(message.from_user.id, '/add', 'Reboot broadcast. User add')
-            time.sleep(10)
-            is_broadcast = True
-            bot.send_message(message.from_user.id, 'Трансляция перезапущена')
-            broadcast(message)
+        reboot(message, '/add', f'User {user["first_name"]} {user["last_name"]} add')
+
+    @bot.message_handler(commands=['delete_all'])
+    def delete_all(message):  # модуль запуска трансляции
+        global is_broadcast
+        log(message.from_user.id, '/delete_all')
+        if is_empty():
+            bot.send_message(message.from_user.id, 'Ваш список уже пуст')
+            return 0
+        else:
+            check(message)
+        data = {}
+        try:
+            with open('users.pickle', 'wb') as f:
+                pickle.dump(data, f)
+        except Exception:
+            log(message.from_user.id, '/delete', 'ERROR', "Error while saving a new list")
+            bot.send_message(message.from_user.id, 'Ошибка при сохранении исправленного списка, перезапустите команду')
+            return 1
+        log(message.from_user.id, '/delete', f'Users removed')
+        bot.send_message(message.from_user.id, f'Все пользователи успешно удалены')
+        reboot(message, '/delete_all', f'Users removed')
 
     @bot.message_handler(commands=['delete'])
     def delete_main(message):  # модуль запуска трансляции
@@ -188,7 +218,6 @@ def main():
             return 1
         try:
             user = data[message.text]
-
             del data[message.text]
         except Exception:
             log(message.from_user.id, '/delete', 'ERROR', 'The user is missing in the list')
@@ -203,14 +232,7 @@ def main():
             return 1
         log(message.from_user.id, '/delete', f'User {user}(id: {message.text}) removed')
         bot.send_message(message.from_user.id, f'Пользователь {user}(id: {message.text}) успешно удален')
-        if is_broadcast:
-            is_broadcast = False
-            bot.send_message(message.from_user.id, 'Перезапуск трансляции...')
-            log(message.from_user.id, '/delete', 'Reboot broadcast. User removed')
-            time.sleep(10)
-            is_broadcast = True
-            bot.send_message(message.from_user.id, 'Трансляция перезапущена')
-            broadcast(message)
+        reboot(message, '/delete', f'User {user}(id: {message.text}) removed')
 
     @bot.message_handler(commands=['check'])
     def check(message):
