@@ -3,3 +3,4 @@ config.py
 vk.py
 users.pickle
 log.txt
+exp.pickle
