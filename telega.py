@@ -320,6 +320,7 @@ def main():
     bot.polling()
 
 
+log('start', '')
 while True:
     try:
         main()
