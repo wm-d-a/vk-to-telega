@@ -18,6 +18,40 @@ def log(user, command, *args):  # Logging by template: <date and time> <chat id>
     print(log_message)
 
 
+def find_user_id(index, data):
+    for key in data:
+        if data[key][1] == index:
+            return key
+
+
+def change_index(user_id, data):
+    change = False
+    for key in data:
+        if key == user_id:
+            change = True
+        if change:
+            data[key][1] -= 1
+    return data
+
+
+def is_empty():
+    if os.stat("users.pickle").st_size == 0:
+        init = True
+    else:
+        init = False
+    return init
+
+
+def change_index(user_id, data):
+    change = False
+    for key in data:
+        if key == user_id:
+            change = True
+        if change:
+            data[key][1] -= 1
+    return data
+
+
 is_broadcast = False  # Включена ли трансляция
 
 
@@ -29,13 +63,6 @@ def main():
         vk = session.get_api()
     except Exception:
         log('before_the_start', 'CHECK ACCESS TOKEN')
-
-    def is_empty():
-        if os.stat("users.pickle").st_size == 0:
-            init = True
-        else:
-            init = False
-        return init
 
     def reboot(message, func_name, for_user=''):
         global is_broadcast
@@ -147,7 +174,7 @@ def main():
                              'Ошибка при открытии списка юзеров, проверьте наличие файла и повторите команду')
             return 1
         for user in users:
-            data.append({user['id']: user['first_name'] + ' ' + user['last_name']})
+            data[str(user["id"])] = [user['first_name'] + ' ' + user['last_name'], len(data) + 1]
         try:
             with open('users.pickle', 'wb') as f:
                 pickle.dump(data, f)
@@ -172,7 +199,7 @@ def main():
 
     def add(message):
         global is_broadcast
-        data = []
+        data = {}
         try:
             if not is_empty():
                 with open('users.pickle', 'rb') as f:
@@ -189,7 +216,9 @@ def main():
             bot.send_message(message.from_user.id,
                              'Пользователь не найден, проверьте id пользователя и повторите команду /add')
             return 1
-        data.append({user['id']: user['first_name'] + ' ' + user['last_name']})
+
+        data[str(user["id"])] = [user['first_name'] + ' ' + user['last_name'], len(data) + 1]
+
         try:
             with open('users.pickle', 'wb') as f:
                 pickle.dump(data, f)
@@ -211,7 +240,7 @@ def main():
             return 0
         else:
             check(message)
-        data = []
+        data = {}
         try:
             with open('users.pickle', 'wb') as f:
                 pickle.dump(data, f)
@@ -219,8 +248,9 @@ def main():
             log(message.from_user.id, '/delete', 'ERROR', "Error while saving a new list")
             bot.send_message(message.from_user.id, 'Ошибка при сохранении исправленного списка, перезапустите команду')
             return 1
-        log(message.from_user.id, '/delete', f'Users removed')
+        log(message.from_user.id, '/delete_all', f'Users removed')
         bot.send_message(message.from_user.id, f'Все пользователи успешно удалены')
+        reboot(message, '/delete_all', f'Users removed')
 
     @bot.message_handler(commands=['delete'])
     def delete_main(message):  # модуль запуска трансляции
@@ -244,9 +274,10 @@ def main():
                              'Ошибка при открытии списка юзеров, проверьте наличие файла и повторите команду')
             return 1
         try:
-            index = int(message.text) - 1
-            user = data[index]
-            del data[index]
+            user_id = find_user_id(int(message.text), data)
+            data = change_index(user_id, data)
+            user = data[user_id][0]
+            del data[user_id]
         except Exception:
             log(message.from_user.id, '/delete', 'ERROR', 'The user is missing in the list')
             bot.send_message(message.from_user.id, 'Пользователь отсутствует в списке, повторите команду /delete')
@@ -258,10 +289,9 @@ def main():
             log(message.from_user.id, '/delete', 'ERROR', "Error while saving a new list")
             bot.send_message(message.from_user.id, 'Ошибка при сохранении исправленного списка, перезапустите команду')
             return 1
-        key = [item for item in user.keys()][0]
-        log(message.from_user.id, '/delete', f'User {user[key]}(id: {key}) removed')
-        bot.send_message(message.from_user.id, f'Пользователь {user[key]}(id: {key}) успешно удален')
-        reboot(message, '/delete', f'User {user[key]}(id: {key}) removed')
+        log(message.from_user.id, '/delete', f'User {user}(id: {user_id}) removed')
+        bot.send_message(message.from_user.id, f'Пользователь {user}(id: {user_id}) успешно удален')
+        reboot(message, '/delete', f'User {user}(id: {user_id}) removed')
 
     @bot.message_handler(commands=['check'])
     def check(message):
@@ -272,20 +302,21 @@ def main():
                              'пользователей. Введите /add')
         else:
             try:
-                with open('users.pickle', 'rb') as f:  # rewrite!!!
+                with open('users.pickle', 'rb') as f:
                     data = pickle.load(f)
                     buf = ['']
-                    for index, d in enumerate(data):
+                    for item in data:
                         if len(buf[-1]) > 3000:
                             buf.append('')
-                        key = [item for item in d.keys()][0]  # получение ключа словаря
-                        buf[-1] += f'{index + 1}) {d[key]}\n'
+                        buf[-1] += f'{data[item][1]}) {data[item][0]} (id: {item})\n'
+                    bot.send_message(message.from_user.id, f'В вашем списке:')
                     for item in buf:
-                        bot.send_message(message.from_user.id, f'В вашем списке:\n' + item)
+                        bot.send_message(message.from_user.id, '\n' + item)
             except Exception:
                 log(message.from_user.id, '/check', 'Error reading a file')
                 bot.send_message(message.from_user.id,
                                  'Ошибка при открытии списка юзеров, проверьте наличие файла и повторите команду')
+
     bot.polling()
 
 
