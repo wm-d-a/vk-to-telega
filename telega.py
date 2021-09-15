@@ -256,7 +256,7 @@ def main():
     def delete_main(message):  # модуль запуска трансляции
         log(message.from_user.id, '/delete')
         if is_empty():
-            bot.send_message(message.from_user.id, 'Ваш список уже пуст')
+            bot.send_message(message.from_user.id, 'Ваш список пуст')
             return 0
         else:
             check(message)
@@ -298,8 +298,8 @@ def main():
         log(message.from_user.id, '/check')
         if is_empty():
             bot.send_message(message.from_user.id,
-                             'Вы запустили бота впервые, необходимо добавить'
-                             'пользователей. Введите /add')
+                             'Список пуст, необходимо добавить'
+                             'пользователей. Введите /add или /add_all')
         else:
             try:
                 with open('users.pickle', 'rb') as f:
@@ -325,4 +325,4 @@ while True:
         main()
     except Exception:
         log(user='--------', command='\nREBOOT\n')
-        main()
+        continue
