@@ -5,3 +5,8 @@ users.pickle
 log.txt
 exp.pickle
 __pycache__
+other.py
+add.py
+delete.py
+check.py
+broadcast.py
