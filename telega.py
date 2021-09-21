@@ -126,12 +126,20 @@ def main():
         try:
             for event in longpoll.listen():
                 if is_broadcast:
-                    if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text and event.from_user:
+                    if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.from_user:
                         if str(event.user_id) in data:
-                            id = str(event.user_id)
-                            message_resend = f'Пользователь {data[id]} отправил:\n{event.text}'
-                            log(message.from_user.id, '/vk', 'broadcast', 'resend message')
-                            bot.send_message(message.from_user.id, message_resend)
+                            if event.text:
+                                id = str(event.user_id)
+                                message_resend = f'Пользователь {data[id][0]} отправил:\n{event.text}'
+                                log(message.from_user.id, '/vk', 'broadcast', 'resend message')
+                                bot.send_message(message.from_user.id, message_resend)
+                                if len(event.attachments) != 0:
+                                    bot.send_message(message.from_user.id, str(event.attachments))
+                                    bot.send_message(message.from_user.id, "В сообщении находились вложения")
+                            else:
+                                if len(event.attachments) != 0:
+                                    # bot.send_message(message.from_user.id, str(event.attachments))
+                                    bot.send_message(message.from_user.id, "В сообщении находились вложения")
                 else:
                     log(message.from_user.id, '/vk', 'broadcast', 'stop broadcast')
                     return 0
@@ -251,7 +259,7 @@ def main():
         save(message, data)
         log(message.from_user.id, '/delete_all', f'all users removed')
         bot.send_message(message.from_user.id, f'Все пользователи успешно удалены')
-        reboot(message, '/delete_all', f'Users removed')
+        alt_exit(message)
 
     @bot.message_handler(commands=['check'])
     def check(message):
