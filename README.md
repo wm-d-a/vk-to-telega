@@ -1,7 +1,7 @@
 # vk-to-telega
-vk-to-telega is a bot for broadcasting messages from the social network VKontakte to Telegram Messenger. Bot Based on [PyTelegramBotAPI](https://github.com/eternnoir/pyTelegramBotAPI) libraries, [vk_api](https://github.com/python273/vk_api) for Python Programming Language.
+vk-to-telega is a bot for broadcasting messages from the VKontakte to Telegram Messenger. Bot Based on [PyTelegramBotAPI](https://github.com/eternnoir/pyTelegramBotAPI) libraries, [vk_api](https://github.com/python273/vk_api) for Python Programming Language.
 
-# Preparation for launch
+# Before the start
 
 You need to register your bot from [@BotFather](https://t.me/botfather#:~:text=BotFather%20is%20the%20one%20bot,BotFather%20right%20away.) to get a token. Next, you need to get Access Token to work vk api (https://vkhost.github.io/).
 
