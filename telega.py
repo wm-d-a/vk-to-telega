@@ -1,6 +1,6 @@
 import time
 import telebot
-from config import vk_token, token
+from config import vk_token, tele_token
 import vk_api
 import pickle
 from vk_api.longpoll import VkLongPoll, VkEventType
@@ -28,7 +28,7 @@ is_broadcast = False  # Включена ли трансляция
 
 
 def main():
-    bot = telebot.TeleBot(token)
+    bot = telebot.TeleBot(tele_token)
 
     try:
         session = vk_api.VkApi(token=vk_token)
@@ -108,6 +108,9 @@ def main():
 
     @bot.message_handler(commands=['exit'])
     def alt_exit(message):
+        """
+        Функция отвечает за выход из трансляции
+        """
         log(message.from_user.id, '/exit')
         global is_broadcast
         bot.send_message(message.from_user.id, 'Трансляция отключится через 10 секунд')
@@ -117,6 +120,9 @@ def main():
         log(message.from_user.id, '/exit', 'Broadcast stopped')
 
     def broadcast(message):
+        '''
+        Функция отвечает за трансляцию сообщений
+        '''
         global is_broadcast
         log(message.from_user.id, '/vk', 'broadcast', 'starting longpoll')
         longpoll = VkLongPoll(session)
@@ -130,16 +136,19 @@ def main():
                         if str(event.user_id) in data:
                             if event.text:
                                 id = str(event.user_id)
-                                message_resend = f'Пользователь {data[id][0]} отправил:\n{event.text}'
+                                message_resend = f'Пользователь {data[id][0]} отправил(a):\n{event.text}'
                                 log(message.from_user.id, '/vk', 'broadcast', 'resend message')
-                                bot.send_message(message.from_user.id, message_resend)
                                 if len(event.attachments) != 0:
                                     bot.send_message(message.from_user.id, str(event.attachments))
                                     bot.send_message(message.from_user.id, "В сообщении находились вложения")
                             else:
                                 if len(event.attachments) != 0:
+                                    id = str(event.user_id)
+                                    message_resend = f'Пользователь {data[id][0]} отправил(a) вложение'
+                                    log(message.from_user.id, '/vk', 'broadcast', 'resend message')
                                     # bot.send_message(message.from_user.id, str(event.attachments))
                                     bot.send_message(message.from_user.id, "В сообщении находились вложения")
+                            bot.send_message(message.from_user.id, message_resend)
                 else:
                     log(message.from_user.id, '/vk', 'broadcast', 'stop broadcast')
                     return 0
@@ -243,7 +252,8 @@ def main():
         data = open_users(message)
         if data != 1:
             for user in users:
-                data[str(user["id"])] = [user['first_name'] + ' ' + user['last_name'], len(data) + 1]
+                if user['id'] not in data:
+                    data[str(user["id"])] = [user['first_name'] + ' ' + user['last_name'], len(data) + 1]
             save(message, data)
             log(message.from_user.id, '/add_all', 'add all friends')
             bot.send_message(message.from_user.id,
