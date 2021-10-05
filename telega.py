@@ -269,7 +269,8 @@ def main():
         save(message, data)
         log(message.from_user.id, '/delete_all', f'all users removed')
         bot.send_message(message.from_user.id, f'Все пользователи успешно удалены')
-        alt_exit(message)
+        if is_broadcast:
+            alt_exit(message)
 
     @bot.message_handler(commands=['check'])
     def check(message):
